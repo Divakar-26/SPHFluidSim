@@ -55,6 +55,7 @@ public:
     std::vector<int> getNeighbors(glm::vec2 position);
 
     void applyMousePressure(glm::vec2 mousePos, float pressureStrength, float radius);
+    void applyContinuousMousePressure();
 
 
 private:

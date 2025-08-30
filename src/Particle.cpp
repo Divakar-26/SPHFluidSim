@@ -7,6 +7,9 @@
 float Particle::targetDensity = 2.0f;
 float Particle::pressureMultiplier = 10.0f;
 
+bool leftMouseDown = false;
+bool rightMouseDown = false;
+
 Particle::Particle(int W, int H) : WINDOW_W(W), WINDOW_H(H)
 {
     radius = 0.01f;
@@ -57,6 +60,8 @@ void Particle::update(float dt)
             buildSpatialGrid(predictedPosition);
             updateDensities(predictedPosition);
             updatePressures();
+
+            applyContinuousMousePressure();
 
             for (int i = 0; i < numParticles; i++)
             {
@@ -134,11 +139,12 @@ void Particle::OnEvent(SDL_Event &e)
     {
         if (e.button.button == SDL_BUTTON_LEFT)
         {
+            leftMouseDown = true;
             applyMousePressure(mouseWorldPos, 10.0f, 1.0f);
         }
-
         else if (e.button.button == SDL_BUTTON_RIGHT)
         {
+            rightMouseDown = true;
             applyMousePressure(mouseWorldPos, -10.0f, 1.0f);
         }
         else if (e.button.button == SDL_BUTTON_MIDDLE)
@@ -147,17 +153,49 @@ void Particle::OnEvent(SDL_Event &e)
             std::cout << "Density: " << z << " | Pressure: " << convertDensityToPressure(z) << std::endl;
         }
     }
+    else if (e.type == SDL_EVENT_MOUSE_BUTTON_UP)
+    {
+        if (e.button.button == SDL_BUTTON_LEFT)
+        {
+            leftMouseDown = false;
+        }
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+        {
+            rightMouseDown = false;
+        }
+    }
     else if (e.type == SDL_EVENT_MOUSE_MOTION)
     {
-        // Continuous pressure while dragging
-        if (e.motion.state & SDL_BUTTON_LMASK) // Left drag
+        if (e.motion.state & SDL_BUTTON_LMASK)
         {
             applyMousePressure(mouseWorldPos, 1.0f, 0.8f);
         }
-        else if (e.motion.state & SDL_BUTTON_RMASK) // Right drag
+        else if (e.motion.state & SDL_BUTTON_RMASK)
         {
             applyMousePressure(mouseWorldPos, -1.0f, 0.8f);
         }
+    }
+}
+
+void Particle::applyContinuousMousePressure()
+{
+    if (!leftMouseDown && !rightMouseDown)
+        return;
+
+    float mx, my;
+    SDL_GetMouseState(&mx, &my);
+
+    float worldX = (mx - WINDOW_W / 2.0f) / 100.0f;
+    float worldY = (WINDOW_H / 2.0f - my) / 100.0f;
+    glm::vec2 mouseWorldPos = {worldX, -worldY};
+
+    if (leftMouseDown)
+    {
+        applyMousePressure(mouseWorldPos, 1.0f, 0.8f);
+    }
+    else if (rightMouseDown)
+    {
+        applyMousePressure(mouseWorldPos, -1.0f, 0.8f);
     }
 }
 
@@ -213,10 +251,9 @@ float Particle::smoothingKernel(float sr, float r)
         return 0.0f;
     float coef = 4.0f / (M_PI * pow(sr, 8));
     float diff = (sr * sr - r * r);
-    return coef * diff * diff * diff; // (sr^2 - r^2)^3
+    return coef * diff * diff * diff; 
 }
 
-// Gradient of Spiky kernel (better for pressure forces)
 glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
 {
     float r = glm::length(vec);
@@ -289,12 +326,11 @@ glm::vec2 Particle::calculatePressureForce(int particleIndex)
         {
             glm::vec2 gradW = smoothingKernelGradient(smoothingRadius, vec);
 
-            // Better pressure calculation - use density ratio
             float pressure_i = convertDensityToPressure(densities[particleIndex]);
             float pressure_j = convertDensityToPressure(densities[i]);
 
-            // Symmetric pressure force
-            pressureForce += -mass * (pressure_i + pressure_j) / (2.0f * densities[i] + 1e-6f) * gradW;
+            float sharedPressure = (pressure_i + pressure_j) / 2.0f;
+            pressureForce += -mass * mass * sharedPressure * (1.0f / densities[i] + 1.0f / densities[particleIndex]) * gradW;
         }
     }
 
@@ -389,7 +425,6 @@ void Particle::applyMousePressure(glm::vec2 mousePos, float pressureStrength, fl
             glm::vec2 direction = toParticle / distance;
 
             float forceFactor = 1.0f - (distance / radius);
-
 
             if (pressureStrength > 0)
             {

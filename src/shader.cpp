@@ -3,6 +3,7 @@
 #include <ostream>
 #include <sstream>
 #include <iostream>
+#include <glm/gtc/type_ptr.hpp>
 
 
 std::string Shader::readFile(const char * filePath){
@@ -60,6 +61,14 @@ void Shader::setVec2(const std::string &name, const glm::vec2 &value) const {
         return;
     }
     glUniform2f(loc, value.x, value.y);
+}
+void Shader::setMat4(const std::string &name, const glm::mat4 &value) const {
+    GLint loc = glGetUniformLocation(ID, name.c_str());
+    if (loc == -1) {
+        std::cerr << "Warning: Uniform '" << name << "' not found!" << std::endl;
+        return;
+    }
+    glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(value));
 }
 
 void Shader::setScale(const std::string &name, float value) const {

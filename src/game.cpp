@@ -5,6 +5,7 @@
 #include <iostream>
 #include <time.h>
 #include <vector>
+#include <glm/gtc/matrix_transform.hpp>
 
 #define UNITMULTIPLIER 100
 
@@ -31,6 +32,9 @@ Game::Game()
 {
   numOfParticels = 0;
   previousNumParticles = 0;
+  cameraPosition = {0.0f, 0.0f};
+  cameraZoom = 1.0f;
+  cameraSpeed = 0.5f;
 }
 
 bool Game::init(const char *title, int WINDOW_W, int WINDOW_H)
@@ -120,7 +124,21 @@ void Game::update(float dt)
   for (int i = 0; i < numOfParticels; i++)
   {
     float t = glm::clamp(p->speed[i] / maxSpeed, 0.0f, 1.0f);
-    colors[i] = glm::vec3(t, 0.0f, 1.0f - t);
+    
+    // blue to green
+    if (t < 0.33f) {
+      // blue to cyan
+      float localT = t * 3.0f;
+      colors[i] = glm::vec3(0.0f, localT, 1.0f);
+    } else if (t < 0.66f) {
+      // cyan to green
+      float localT = (t - 0.33f) * 3.0f;
+      colors[i] = glm::vec3(0.0f, 1.0f, 1.0f - localT);
+    } else {
+      // green to orange
+      float localT = (t - 0.66f) * 3.0f;
+      colors[i] = glm::vec3(localT, 1.0f - localT * 0.5f, 0.0f);
+    }
   }
 
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -146,7 +164,7 @@ void Game::handleEvent()
       case SDL_EVENT_MOUSE_BUTTON_UP:
       case SDL_EVENT_MOUSE_MOTION:
       case SDL_EVENT_MOUSE_WHEEL:
-        continue; 
+        continue;
       }
     }
 
@@ -157,7 +175,7 @@ void Game::handleEvent()
       case SDL_EVENT_KEY_DOWN:
       case SDL_EVENT_KEY_UP:
       case SDL_EVENT_TEXT_INPUT:
-        continue; 
+        continue;
       }
     }
 
@@ -196,10 +214,11 @@ void Game::render()
   glClear(GL_COLOR_BUFFER_BIT);
 
   shader->use();
+
   shader->setFloat("pointSize", p->GetRadius() * 2.0f);
   shader->setVec2("screenSize", glm::vec2(WINDOW_W, WINDOW_H));
   shader->setScale("worldScale", UNITMULTIPLIER);
-  glUniform1f(glGetUniformLocation(shader->ID, "uAlpha"), p->alpha); // set alpha = 0.3
+  glUniform1f(glGetUniformLocation(shader->ID, "uAlpha"), p->alpha);
 
   glBindVertexArray(VAO);
   glDrawArrays(GL_POINTS, 0, numOfParticels);
