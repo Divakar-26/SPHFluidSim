@@ -32,7 +32,6 @@ GLuint compileShader(GLenum type, const char *source)
 
 Game::Game()
 {
-  p = new Particle();
   numOfParticels = numOfParticels;
 }
 
@@ -62,6 +61,7 @@ bool Game::init(const char *title, int WINDOW_W, int WINDOW_H)
 
   SDL_GL_SetSwapInterval(0);
 
+  p = new Particle(WINDOW_W, WINDOW_H);
   ImguiInit();
 
   glEnable(GL_PROGRAM_POINT_SIZE); // Enable gl_PointSize in shader
@@ -154,7 +154,7 @@ void Game::render()
 
   // 2. Draw your particles
   shader->use();
-  shader->setFloat("pointSize", p->GetRadius());
+  shader->setFloat("pointSize", p->GetRadius() * 2.0f);
   shader->setVec2("screenSize", glm::vec2(WINDOW_W, WINDOW_H));
   shader->setScale("worldScale", UNITMULTIPLIER);
   glUniform1f(glGetUniformLocation(shader->ID, "uAlpha"), p->alpha); // set alpha = 0.3
@@ -204,8 +204,14 @@ void Game::ImguiRender()
   ImGui::Text("Hello from ImGui!");
   ImGui::SliderFloat("Gravity", &gravity, -20.0f, 20.0f);
   ImGui::SliderFloat("Damping", &damping, 0.0f, 1.0f);
-  ImGui::SliderFloat("Radius", &p->GetRadius(), 0.0f, 10.0f);
+  if (ImGui::SliderFloat("Radius", &p->GetRadius(), 0.0f, 10.0f));
   ImGui::SliderFloat("alpha", &p->alpha, 0.0f, 1.0f);
+
+  if (ImGui::SliderInt("numParticles", &p->numParticles, 0, 200) || ImGui::SliderFloat("spacing", &p->particleSpacing, 0.0f, 2.0f))
+  {
+    p->MakeGrid();
+  }
+
   ImGui::Checkbox("start", &p->running);
   ImGui::End();
 

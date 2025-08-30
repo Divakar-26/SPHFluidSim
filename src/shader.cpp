@@ -42,8 +42,6 @@ Shader::Shader(const char * vertexPath, const char * fragmentPath){
 
   glDeleteShader(vertex);
   glDeleteShader(fragment);
-
-
 }
 
 void Shader::setFloat(const std::string &name, float value) const {
