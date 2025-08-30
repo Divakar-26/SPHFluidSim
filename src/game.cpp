@@ -14,7 +14,10 @@
 */
 
 GLuint shaderProgram;
+// Add a new shader for pressure visualization
+Shader *pressureShader;
 GLuint VBO, VAO;
+GLuint pressureVBO;
 
 // defines
 float gravity = 980;
@@ -70,6 +73,8 @@ bool Game::init(const char *title, int WINDOW_W, int WINDOW_H)
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
 
+  glGenBuffers(1, &pressureVBO);
+
   glBindVertexArray(VAO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
   glBufferData(GL_ARRAY_BUFFER, numOfParticels * sizeof(glm::vec2), p->GetPositions().data(), GL_STATIC_DRAW);
@@ -77,7 +82,32 @@ bool Game::init(const char *title, int WINDOW_W, int WINDOW_H)
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void *)0);
   glEnableVertexAttribArray(0);
 
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  static size_t lastSize = 0;
+
+  if (numOfParticels != lastSize)
+  {
+    glBufferData(GL_ARRAY_BUFFER, numOfParticels * sizeof(glm::vec2), p->GetPositions().data(), GL_DYNAMIC_DRAW);
+    lastSize = numOfParticels;
+  }
+  else
+  {
+    glBufferSubData(GL_ARRAY_BUFFER, 0, numOfParticels * sizeof(glm::vec2), p->GetPositions().data());
+  }
+
+  // Update pressure buffer
+  glBindBuffer(GL_ARRAY_BUFFER, pressureVBO);
+  if (numOfParticels != lastSize)
+  {
+    glBufferData(GL_ARRAY_BUFFER, numOfParticels * sizeof(float), p->pressures.data(), GL_DYNAMIC_DRAW);
+  }
+  else
+  {
+    glBufferSubData(GL_ARRAY_BUFFER, 0, numOfParticels * sizeof(float), p->pressures.data());
+  }
+
   shader = new Shader("shaders/vertex.vert", "shaders/fragment.frag");
+  pressureShader = new Shader("shaders/vertex_pressure.vert", "shaders/fragment_pressure.frag");
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -129,6 +159,8 @@ void Game::handleEvent()
         p->GetRadius() += 1.0f;
       }
     }
+
+    p->OnEvent(event);
   }
 }
 
@@ -158,6 +190,38 @@ void Game::render()
   shader->setVec2("screenSize", glm::vec2(WINDOW_W, WINDOW_H));
   shader->setScale("worldScale", UNITMULTIPLIER);
   glUniform1f(glGetUniformLocation(shader->ID, "uAlpha"), p->alpha); // set alpha = 0.3
+
+  pressureShader->use();
+  pressureShader->setFloat("pointSize", p->GetRadius() * 2.0f);
+  pressureShader->setVec2("screenSize", glm::vec2(WINDOW_W, WINDOW_H));
+  pressureShader->setScale("worldScale", UNITMULTIPLIER);
+  pressureShader->setFloat("uAlpha", p->alpha);
+
+  // Pass pressure parameters to shader
+  GLint targetDensityLoc = glGetUniformLocation(pressureShader->ID, "targetDensity");
+  GLint pressureMultiplierLoc = glGetUniformLocation(pressureShader->ID, "pressureMultiplier");
+
+  if (targetDensityLoc != -1)
+  {
+    glUniform1f(targetDensityLoc, Particle::targetDensity);
+  }
+  else
+  {
+    std::cout << "Warning: targetDensity uniform not found in shader!" << std::endl;
+  }
+
+  if (pressureMultiplierLoc != -1)
+  {
+    glUniform1f(pressureMultiplierLoc, Particle::pressureMultiplier);
+  }
+  else
+  {
+    std::cout << "Warning: pressureMultiplier uniform not found in shader!" << std::endl;
+  }
+
+  glBindBuffer(GL_ARRAY_BUFFER, pressureVBO);
+  glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void *)0);
+  glEnableVertexAttribArray(1);
 
   glBindVertexArray(VAO);
   glDrawArrays(GL_POINTS, 0, numOfParticels);
@@ -202,16 +266,20 @@ void Game::ImguiRender()
   // 4. Build UI
   ImGui::Begin("Debug");
   ImGui::Text("Hello from ImGui!");
-  ImGui::SliderFloat("Gravity", &gravity, -20.0f, 20.0f);
+  ImGui::SliderFloat("Gravity", &gravity, 0.0f, 100.0f);
   ImGui::SliderFloat("Damping", &damping, 0.0f, 1.0f);
-  if (ImGui::SliderFloat("Radius", &p->GetRadius(), 0.0f, 10.0f));
+  if (ImGui::SliderFloat("Radius", &p->GetRadius(), 0.0f, 10.0f))
+    ;
   ImGui::SliderFloat("alpha", &p->alpha, 0.0f, 1.0f);
 
-  if (ImGui::SliderInt("numParticles", &p->numParticles, 0, 200) || ImGui::SliderFloat("spacing", &p->particleSpacing, 0.0f, 2.0f))
+  if (ImGui::SliderInt("numParticles", &p->numParticles, 0, 1000) || ImGui::SliderFloat("spacing", &p->particleSpacing, 0.0f, 2.0f))
   {
     p->MakeGrid();
   }
 
+  ImGui::SliderFloat("smoothign Radius", &p->smoothingRadius, 0.0f, 10.0f);
+  ImGui::SliderFloat("target Density", &p->targetDensity, 0.0f, 20.0f);
+  ImGui::SliderFloat("pressureMultiplier", &p->pressureMultiplier, 0.0f, 200.0f);
   ImGui::Checkbox("start", &p->running);
   ImGui::End();
 
