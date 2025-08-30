@@ -11,7 +11,7 @@ Particle::Particle(int W, int H) : WINDOW_W(W), WINDOW_H(H)
 {
     radius = 0.01f;
     particleSpacing = 0.0f;
-    smoothingRadius = 0.5f; 
+    smoothingRadius = 0.5f;
 
     float halfW = (W / 2.0f) / 100.0f;
     float halfH = (H / 2.0f) / 100.0f;
@@ -28,11 +28,10 @@ Particle::Particle(int W, int H) : WINDOW_W(W), WINDOW_H(H)
         position.push_back({x, y});
         velocite.push_back({0.0f, 0.0f});
         properties.push_back(1.0f);
-        predictedPosition.push_back({x, y}); 
+        predictedPosition.push_back({x, y});
     }
 
-
-    updateDensities(position); 
+    updateDensities(position);
     speed.resize(numParticles, 0.0f);
     cellSize = smoothingRadius;
 }
@@ -45,26 +44,38 @@ void Particle::update(float dt)
 {
     if (running)
     {
+        int iterations = 2;
+        float sub_dt = dt / iterations;
+
+        for (int iter = 0; iter < iterations; iter++)
+        {
+            for (int i = 0; i < numParticles; i++)
+            {
+                predictedPosition[i] = position[i] + velocite[i] * sub_dt;
+            }
+
+            buildSpatialGrid(predictedPosition);
+            updateDensities(predictedPosition);
+            updatePressures();
+
+            for (int i = 0; i < numParticles; i++)
+            {
+                glm::vec2 pressureForce = calculatePressureForce(i);
+                velocite[i] += (pressureForce / (densities[i] + 1e-6f)) * sub_dt;
+            }
+
+            for (int i = 0; i < numParticles; i++)
+            {
+                position[i] += velocite[i] * sub_dt;
+            }
+        }
+
         for (int i = 0; i < numParticles; i++)
         {
             velocite[i].y += GRAVITY * dt;
-            predictedPosition[i] = position[i] + velocite[i] * dt; 
         }
-        
-
-        buildSpatialGrid(predictedPosition);
-        updateDensities(predictedPosition);
-        updatePressures();
-
         for (int i = 0; i < numParticles; i++)
         {
-            glm::vec2 pressureForce = calculatePressureForce(i);
-            velocite[i] += (pressureForce / (densities[i] + 1e-6f)) * dt;
-        }
-
-        for (int i = 0; i < numParticles; i++)
-        {
-            position[i] += velocite[i] * dt;
             speed[i] = glm::length(velocite[i]);
         }
 
@@ -80,22 +91,22 @@ void Particle::update(float dt)
             if (position[i].y - margin < worldBottom)
             {
                 position[i].y = worldBottom + margin;
-                velocite[i].y *= -0.5f;
+                velocite[i].y *= -0.3f;
             }
             if (position[i].y + margin > worldTop)
             {
                 position[i].y = worldTop - margin;
-                velocite[i].y *= -0.5f;
+                velocite[i].y *= -0.3f;
             }
             if (position[i].x - margin < worldLeft)
             {
                 position[i].x = worldLeft + margin;
-                velocite[i].x *= -0.5f;
+                velocite[i].x *= -0.3f;
             }
             if (position[i].x + margin > worldRight)
             {
                 position[i].x = worldRight - margin;
-                velocite[i].x *= -0.5f;
+                velocite[i].x *= -0.3f;
             }
         }
     }
@@ -112,22 +123,41 @@ void Particle::updateDensities(std::vector<glm::vec2> predictedPosition)
 
 void Particle::OnEvent(SDL_Event &e)
 {
+    float mx, my;
+    SDL_GetMouseState(&mx, &my);
+
+    float worldX = (mx - WINDOW_W / 2.0f) / 100.0f;
+    float worldY = (WINDOW_H / 2.0f - my) / 100.0f;
+    glm::vec2 mouseWorldPos = {worldX, -worldY};
+
     if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
     {
-        float mx, my;
-        SDL_GetMouseState(&mx, &my);
+        if (e.button.button == SDL_BUTTON_LEFT)
+        {
+            applyMousePressure(mouseWorldPos, 10.0f, 1.0f);
+        }
 
-        float worldX = (mx - WINDOW_W / 2.0f) / 100.0f;
-        float worldY = (WINDOW_H / 2.0f - my) / 100.0f;
-
-        std::cout << "Screen: (" << mx << ", " << my << ") ";
-        std::cout << "World: (" << worldX << ", " << worldY << ")" << std::endl;
-
-        float z = calculateDensity({worldX, worldY});
-        std::cout << "Density: " << z << std::endl;
-
-        float pressure = convertDensityToPressure(z);
-        std::cout << "Pressure: " << pressure << std::endl;
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+        {
+            applyMousePressure(mouseWorldPos, -10.0f, 1.0f);
+        }
+        else if (e.button.button == SDL_BUTTON_MIDDLE)
+        {
+            float z = calculateDensity(mouseWorldPos);
+            std::cout << "Density: " << z << " | Pressure: " << convertDensityToPressure(z) << std::endl;
+        }
+    }
+    else if (e.type == SDL_EVENT_MOUSE_MOTION)
+    {
+        // Continuous pressure while dragging
+        if (e.motion.state & SDL_BUTTON_LMASK) // Left drag
+        {
+            applyMousePressure(mouseWorldPos, 1.0f, 0.8f);
+        }
+        else if (e.motion.state & SDL_BUTTON_RMASK) // Right drag
+        {
+            applyMousePressure(mouseWorldPos, -1.0f, 0.8f);
+        }
     }
 }
 
@@ -136,7 +166,7 @@ void Particle::MakeGrid()
     position.clear();
     velocite.clear();
     properties.clear();
-    predictedPosition.clear(); 
+    predictedPosition.clear();
 
     int ppr = (int)std::sqrt(numParticles);
     int ppc = (numParticles - 1) / ppr + 1;
@@ -148,36 +178,54 @@ void Particle::MakeGrid()
         float y = (i / ppr - ppc / 2.0f + 0.5f) * spacing;
 
         position.push_back({x, y});
-        predictedPosition.push_back({x, y}); 
+        predictedPosition.push_back({x, y});
         velocite.push_back({0.0f, 0.0f});
         properties.push_back(1.0f);
     }
-    
-    updateDensities(position); 
+
+    updateDensities(position);
     speed.resize(numParticles, 0.0f);
 }
 
-float Particle::smoothingKernel(float sr, float dst)
+// float Particle::smoothingKernel(float sr, float dst)
+// {
+//     if (dst >= sr)
+//         return 0.0f;
+
+//     float volume = M_PI * pow(sr, 4) / 4.0f;
+//     return ((sr - dst) * (sr - dst)) / volume;
+// }
+
+// glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
+// {
+//     float r = glm::length(vec);
+//     if (r <= 0.0f || r >= sr)
+//         return glm::vec2(0.0f);
+
+//     float coeff = -12.0f / (M_PI * pow(sr, 4));
+//     return coeff * (sr - r) * (vec / r);
+// }
+
+// Poly6 kernel for 2D
+float Particle::smoothingKernel(float sr, float r)
 {
-    if (dst >= sr)
+    if (r >= sr)
         return 0.0f;
-
-
-    float volume = M_PI * pow(sr, 4) / 4.0f;
-    return ((sr - dst) * (sr - dst)) / volume;
+    float coef = 4.0f / (M_PI * pow(sr, 8));
+    float diff = (sr * sr - r * r);
+    return coef * diff * diff * diff; // (sr^2 - r^2)^3
 }
 
-
+// Gradient of Spiky kernel (better for pressure forces)
 glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
 {
     float r = glm::length(vec);
     if (r <= 0.0f || r >= sr)
         return glm::vec2(0.0f);
-
-    float coeff = -12.0f / (M_PI * pow(sr, 4));
-    return coeff * (sr - r) * (vec / r);
+    float coef = -30.0f / (M_PI * pow(sr, 5));
+    float factor = (sr - r) * (sr - r);
+    return coef * factor * (vec / r);
 }
-
 
 float Particle::calculateDensity(glm::vec2 samplePoint)
 {
@@ -225,7 +273,7 @@ glm::vec2 Particle::calculatePressureForce(int particleIndex)
 {
     glm::vec2 pressureForce(0.0f);
     float mass = 1.0f;
-    glm::vec2 samplePoint = predictedPosition[particleIndex]; 
+    glm::vec2 samplePoint = predictedPosition[particleIndex];
 
     std::vector<int> neighbors = getNeighbors(samplePoint);
 
@@ -234,16 +282,19 @@ glm::vec2 Particle::calculatePressureForce(int particleIndex)
         if (i == particleIndex)
             continue;
 
-        glm::vec2 vec = samplePoint - predictedPosition[i]; 
+        glm::vec2 vec = samplePoint - predictedPosition[i];
         float dst = glm::length(vec);
 
-        if (dst > 0.0f && dst < smoothingRadius && densities[i] > 0.0f)
+        if (dst > 0.0f && dst < smoothingRadius)
         {
             glm::vec2 gradW = smoothingKernelGradient(smoothingRadius, vec);
-            float sharedPressure = (convertDensityToPressure(densities[particleIndex]) +
-                                   convertDensityToPressure(densities[i])) / 2.0f;
-            
-            pressureForce += -(sharedPressure * (mass / (densities[i] + 1e-6f)) * gradW);
+
+            // Better pressure calculation - use density ratio
+            float pressure_i = convertDensityToPressure(densities[particleIndex]);
+            float pressure_j = convertDensityToPressure(densities[i]);
+
+            // Symmetric pressure force
+            pressureForce += -mass * (pressure_i + pressure_j) / (2.0f * densities[i] + 1e-6f) * gradW;
         }
     }
 
@@ -283,7 +334,7 @@ int Particle::getCellHash(int x, int y)
 void Particle::buildSpatialGrid(std::vector<glm::vec2> predictedPos)
 {
     spatialGrid.clear();
-
+    cellSize = smoothingRadius;
     for (int i = 0; i < numParticles; i++)
     {
         int hash = getCellHash(predictedPos[i]);
@@ -324,4 +375,32 @@ std::vector<int> Particle::getNeighbors(glm::vec2 samplePoint)
     }
 
     return neighbors;
+}
+
+void Particle::applyMousePressure(glm::vec2 mousePos, float pressureStrength, float radius)
+{
+    for (int i = 0; i < numParticles; i++)
+    {
+        glm::vec2 toParticle = position[i] - mousePos;
+        float distance = glm::length(toParticle);
+
+        if (distance < radius && distance > 0.0f)
+        {
+            glm::vec2 direction = toParticle / distance;
+
+            float forceFactor = 1.0f - (distance / radius);
+
+
+            if (pressureStrength > 0)
+            {
+
+                velocite[i] += direction * pressureStrength * forceFactor;
+            }
+            else
+            {
+
+                velocite[i] -= direction * abs(pressureStrength) * forceFactor;
+            }
+        }
+    }
 }

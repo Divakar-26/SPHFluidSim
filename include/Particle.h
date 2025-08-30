@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <functional>
 
-
 class Particle
 {
 public:
@@ -25,14 +24,12 @@ public:
     glm::vec2 smoothingKernelGradient(float sr, glm::vec2 vec);
     float calculateDensity(glm::vec2 point);
     float calculateProperty(glm::vec2 point);
-    glm::vec2 calculatePressureForce(int particleIndex); 
+    glm::vec2 calculatePressureForce(int particleIndex);
     float convertDensityToPressure(float density);
-
 
     void updateDensities(std::vector<glm::vec2> predictedPosition);
 
-    std::vector<float> pressures; 
-
+    std::vector<float> pressures;
 
     void updatePressures();
 
@@ -51,21 +48,22 @@ public:
 
     float GRAVITY = 0.0f;
 
-    std::vector<float> speed; 
-    std::vector<glm::vec2> predictedPosition; 
+    std::vector<float> speed;
+    std::vector<glm::vec2> predictedPosition;
 
     void buildSpatialGrid(std::vector<glm::vec2> predictedPos);
     std::vector<int> getNeighbors(glm::vec2 position);
+
+    void applyMousePressure(glm::vec2 mousePos, float pressureStrength, float radius);
 
 
 private:
     std::vector<glm::vec2> position;
     std::vector<glm::vec2> velocite;
-    int WINDOW_W, WINDOW_H;   
-    
+    int WINDOW_W, WINDOW_H;
+
     float cellSize;
     std::unordered_map<int, std::vector<int>> spatialGrid;
-    
 
     int getCellHash(glm::vec2 position);
     int getCellHash(int x, int y);
