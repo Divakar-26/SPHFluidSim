@@ -245,24 +245,24 @@ void Particle::MakeGrid()
 // }
 
 // Poly6 kernel for 2D
-float Particle::smoothingKernel(float sr, float r)
-{
-    if (r >= sr)
-        return 0.0f;
-    float coef = 4.0f / (M_PI * pow(sr, 8));
-    float diff = (sr * sr - r * r);
-    return coef * diff * diff * diff; 
-}
+    float Particle::smoothingKernel(float sr, float r)
+    {
+        if (r >= sr)
+            return 0.0f;
+        float coef = 4.0f / (M_PI * pow(sr, 8));
+        float diff = (sr * sr - r * r);
+        return coef * diff * diff * diff; 
+    }
 
-glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
-{
-    float r = glm::length(vec);
-    if (r <= 0.0f || r >= sr)
-        return glm::vec2(0.0f);
-    float coef = -30.0f / (M_PI * pow(sr, 5));
-    float factor = (sr - r) * (sr - r);
-    return coef * factor * (vec / r);
-}
+    glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
+    {
+        float r = glm::length(vec);
+        if (r <= 0.0f || r >= sr)
+            return glm::vec2(0.0f);
+        float coef = -30.0f / (M_PI * pow(sr, 5));
+        float factor = (sr - r) * (sr - r);
+        return coef * factor * (vec / r);
+    }
 
 float Particle::calculateDensity(glm::vec2 samplePoint)
 {
