@@ -8,9 +8,7 @@ This project is a **2D particle-based fluid simulation** implemented in C++ usin
 
 SPH allows us to estimate any field quantity (e.g., temperature, velocity, or some property) at a given point using neighboring particles:
 
-\[
-A(\mathbf{r}) = \sum_j \frac{m_j}{\rho_j} A_j \, W(|\mathbf{r} - \mathbf{r}_j|, h)
-\]
+![Interpolation Equation](images/interpolation.png)
 
 - \( A(\mathbf{r}) \) → interpolated property at point \( \mathbf{r} \)  
 - \( A_j \) → property of particle \( j \)  
