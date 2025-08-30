@@ -4,11 +4,6 @@
 #include <algorithm>
 #include <SDL3/SDL.h>
 
-const float GRAVITY = 9.8f;
-
-// Initialize these global variables
-
-// Initialize static members
 float Particle::targetDensity = 2.0f;
 float Particle::pressureMultiplier = 10.0f;
 
@@ -16,7 +11,7 @@ Particle::Particle(int W, int H) : WINDOW_W(W), WINDOW_H(H)
 {
     radius = 0.01f;
     particleSpacing = 0.0f;
-    smoothingRadius = 0.5f;
+    smoothingRadius = 0.5f; 
 
     float halfW = (W / 2.0f) / 100.0f;
     float halfH = (H / 2.0f) / 100.0f;
@@ -33,10 +28,13 @@ Particle::Particle(int W, int H) : WINDOW_W(W), WINDOW_H(H)
         position.push_back({x, y});
         velocite.push_back({0.0f, 0.0f});
         properties.push_back(1.0f);
+        predictedPosition.push_back({x, y}); 
     }
 
-    // Pre-calculate initial densities
-    updateDensities();
+
+    updateDensities(position); 
+    speed.resize(numParticles, 0.0f);
+    cellSize = smoothingRadius;
 }
 
 Particle::~Particle()
@@ -47,85 +45,68 @@ void Particle::update(float dt)
 {
     if (running)
     {
-        // 1. First update densities based on current positions
-        updateDensities();
-        updatePressures();
-
-        // 2. Calculate and apply pressure forces
         for (int i = 0; i < numParticles; i++)
         {
-            glm::vec2 pressureForce = calculatePressureForce(i); // Use particle index
-            velocite[i] += (pressureForce / densities[i]) * dt;
+            velocite[i].y += GRAVITY * dt;
+            predictedPosition[i] = position[i] + velocite[i] * dt; 
+        }
+        
+
+        buildSpatialGrid(predictedPosition);
+        updateDensities(predictedPosition);
+        updatePressures();
+
+        for (int i = 0; i < numParticles; i++)
+        {
+            glm::vec2 pressureForce = calculatePressureForce(i);
+            velocite[i] += (pressureForce / (densities[i] + 1e-6f)) * dt;
         }
 
-        // 3. Apply gravity and other external forces
-        // for (int i = 0; i < numParticles; i++)
-        // {
-        //     velocite[i].y += GRAVITY * dt;
-
-        //     // Optional: Add some damping to prevent excessive movement
-        //     velocite[i] *= 0.99f;
-        // }
-
-        // 4. Update positions
         for (int i = 0; i < numParticles; i++)
         {
             position[i] += velocite[i] * dt;
+            speed[i] = glm::length(velocite[i]);
         }
 
-        // Define world boundaries
         float worldLeft = -((float)WINDOW_W / 2.0f) / 100.0f;
         float worldRight = ((float)WINDOW_W / 2.0f) / 100.0f;
         float worldBottom = -((float)WINDOW_H / 2.0f) / 100.0f;
         float worldTop = ((float)WINDOW_H / 2.0f) / 100.0f;
 
-        // Collision margin to prevent sticking
         float margin = radius;
 
-        // Loop through all particles
         for (int i = 0; i < numParticles; i++)
         {
-            // Bottom
             if (position[i].y - margin < worldBottom)
             {
                 position[i].y = worldBottom + margin;
-                velocite[i].y *= -0.5f; // Bounce with damping
-                velocite[i].x *= 0.8f;  // Friction
+                velocite[i].y *= -0.5f;
             }
-
-            // Top
             if (position[i].y + margin > worldTop)
             {
                 position[i].y = worldTop - margin;
                 velocite[i].y *= -0.5f;
-                velocite[i].x *= 0.8f;
             }
-
-            // Left
             if (position[i].x - margin < worldLeft)
             {
                 position[i].x = worldLeft + margin;
                 velocite[i].x *= -0.5f;
-                velocite[i].y *= 0.8f;
             }
-
-            // Right
             if (position[i].x + margin > worldRight)
             {
                 position[i].x = worldRight - margin;
                 velocite[i].x *= -0.5f;
-                velocite[i].y *= 0.8f;
             }
         }
     }
 }
 
-void Particle::updateDensities()
+void Particle::updateDensities(std::vector<glm::vec2> predictedPosition)
 {
     densities.resize(numParticles);
     for (int i = 0; i < numParticles; i++)
     {
-        densities[i] = calculateDensity(position[i]);
+        densities[i] = calculateDensity(predictedPosition[i]);
     }
 }
 
@@ -136,7 +117,6 @@ void Particle::OnEvent(SDL_Event &e)
         float mx, my;
         SDL_GetMouseState(&mx, &my);
 
-        // Correct Y coordinate conversion (OpenGL has Y going up)
         float worldX = (mx - WINDOW_W / 2.0f) / 100.0f;
         float worldY = (WINDOW_H / 2.0f - my) / 100.0f;
 
@@ -146,7 +126,6 @@ void Particle::OnEvent(SDL_Event &e)
         float z = calculateDensity({worldX, worldY});
         std::cout << "Density: " << z << std::endl;
 
-        // Also show pressure at that point
         float pressure = convertDensityToPressure(z);
         std::cout << "Pressure: " << pressure << std::endl;
     }
@@ -157,6 +136,7 @@ void Particle::MakeGrid()
     position.clear();
     velocite.clear();
     properties.clear();
+    predictedPosition.clear(); 
 
     int ppr = (int)std::sqrt(numParticles);
     int ppc = (numParticles - 1) / ppr + 1;
@@ -168,12 +148,13 @@ void Particle::MakeGrid()
         float y = (i / ppr - ppc / 2.0f + 0.5f) * spacing;
 
         position.push_back({x, y});
+        predictedPosition.push_back({x, y}); 
         velocite.push_back({0.0f, 0.0f});
         properties.push_back(1.0f);
     }
-
-    // Update densities after making grid
-    updateDensities();
+    
+    updateDensities(position); 
+    speed.resize(numParticles, 0.0f);
 }
 
 float Particle::smoothingKernel(float sr, float dst)
@@ -181,25 +162,22 @@ float Particle::smoothingKernel(float sr, float dst)
     if (dst >= sr)
         return 0.0f;
 
-    float normalizedDistance = dst / sr;
-    float normalizedValue = 1.0f - normalizedDistance * normalizedDistance;
-    float normalization = 4.0f / (M_PI * pow(sr, 4));
 
-    return normalization * normalizedValue * normalizedValue * normalizedValue;
+    float volume = M_PI * pow(sr, 4) / 4.0f;
+    return ((sr - dst) * (sr - dst)) / volume;
 }
+
 
 glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
 {
-    float dst = glm::length(vec);
-    if (dst <= 0.0f || dst >= sr)
+    float r = glm::length(vec);
+    if (r <= 0.0f || r >= sr)
         return glm::vec2(0.0f);
 
-    float term = (1.0f - (dst * dst) / (sr * sr));
-    float coeff = -24.0f / (M_PI * pow(sr, 6));
-    float dWdr = coeff * dst * term * term;
-
-    return (dWdr / dst) * vec;
+    float coeff = -12.0f / (M_PI * pow(sr, 4));
+    return coeff * (sr - r) * (vec / r);
 }
+
 
 float Particle::calculateDensity(glm::vec2 samplePoint)
 {
@@ -207,9 +185,11 @@ float Particle::calculateDensity(glm::vec2 samplePoint)
     float density = 0.0f;
     float sr = std::max(0.1f, smoothingRadius);
 
-    for (size_t i = 0; i < position.size(); i++)
+    std::vector<int> neighbors = getNeighbors(samplePoint);
+
+    for (int particleIndex : neighbors)
     {
-        glm::vec2 vec = position[i] - samplePoint;
+        glm::vec2 vec = predictedPosition[particleIndex] - samplePoint;
         float dst = glm::length(vec);
 
         if (dst < sr)
@@ -245,26 +225,25 @@ glm::vec2 Particle::calculatePressureForce(int particleIndex)
 {
     glm::vec2 pressureForce(0.0f);
     float mass = 1.0f;
-    glm::vec2 samplePoint = position[particleIndex];
+    glm::vec2 samplePoint = predictedPosition[particleIndex]; 
 
-    for (int i = 0; i < numParticles; i++)
+    std::vector<int> neighbors = getNeighbors(samplePoint);
+
+    for (int i : neighbors)
     {
         if (i == particleIndex)
-            continue; // Skip self
+            continue;
 
-        glm::vec2 vec = samplePoint - position[i];
+        glm::vec2 vec = samplePoint - predictedPosition[i]; 
         float dst = glm::length(vec);
 
         if (dst > 0.0f && dst < smoothingRadius && densities[i] > 0.0f)
         {
             glm::vec2 gradW = smoothingKernelGradient(smoothingRadius, vec);
-
-            // Calculate shared pressure
             float sharedPressure = (convertDensityToPressure(densities[particleIndex]) +
-                                    convertDensityToPressure(densities[i])) /
-                                   2.0f;
-
-            pressureForce += -(sharedPressure * (mass / densities[i]) * gradW);
+                                   convertDensityToPressure(densities[i])) / 2.0f;
+            
+            pressureForce += -(sharedPressure * (mass / (densities[i] + 1e-6f)) * gradW);
         }
     }
 
@@ -285,4 +264,64 @@ void Particle::updatePressures()
     {
         pressures[i] = convertDensityToPressure(densities[i]);
     }
+}
+
+int Particle::getCellHash(glm::vec2 position)
+{
+    int cellX = static_cast<int>(position.x / cellSize);
+    int cellY = static_cast<int>(position.y / cellSize);
+    return getCellHash(cellX, cellY);
+}
+
+int Particle::getCellHash(int x, int y)
+{
+    const int prime1 = 73856093;
+    const int prime2 = 19349663;
+    return (x * prime1) ^ (y * prime2);
+}
+
+void Particle::buildSpatialGrid(std::vector<glm::vec2> predictedPos)
+{
+    spatialGrid.clear();
+
+    for (int i = 0; i < numParticles; i++)
+    {
+        int hash = getCellHash(predictedPos[i]);
+        spatialGrid[hash].push_back(i);
+    }
+}
+
+std::vector<int> Particle::getNeighbors(glm::vec2 samplePoint)
+{
+    std::vector<int> neighbors;
+
+    int centerCellX = static_cast<int>(samplePoint.x / cellSize);
+    int centerCellY = static_cast<int>(samplePoint.y / cellSize);
+
+    for (int dx = -1; dx <= 1; dx++)
+    {
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            int cellX = centerCellX + dx;
+            int cellY = centerCellY + dy;
+            int hash = getCellHash(cellX, cellY);
+
+            if (spatialGrid.find(hash) != spatialGrid.end())
+            {
+                for (int particleIndex : spatialGrid[hash])
+                {
+                    if (particleIndex >= 0 && particleIndex < predictedPosition.size())
+                    {
+                        float distance = glm::length(predictedPosition[particleIndex] - samplePoint);
+                        if (distance < smoothingRadius)
+                        {
+                            neighbors.push_back(particleIndex);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return neighbors;
 }

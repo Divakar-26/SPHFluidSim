@@ -1,19 +1,21 @@
 #version 330 core
 layout(location = 0) in vec2 aPos;
+layout(location = 1) in vec3 aColor; // 🔹 add color attribute
 
-uniform vec2 screenSize;   // width and height in pixels
+out vec3 fColor; // pass to fragment shader
+
+uniform vec2 screenSize;
 uniform float pointSize;
-uniform float worldScale;  // how many pixels per world unit
+uniform float worldScale;
 
 void main()
 {
-    // Convert world coordinates to pixels
     vec2 pixelPos = aPos * worldScale;
-
-    // Convert pixel coordinates to NDC (-1 to 1)
     vec2 ndc = pixelPos / (screenSize * 0.5);
-    ndc.y = -ndc.y; // flip Y for OpenGL
+    ndc.y = -ndc.y;
 
     gl_Position = vec4(ndc, 0.0, 1.0);
     gl_PointSize = pointSize * worldScale;
+
+    fColor = aColor; // 🔹 pass color to fragment
 }

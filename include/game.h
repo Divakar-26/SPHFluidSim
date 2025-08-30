@@ -13,7 +13,6 @@
 class Game
 {
 public:
-
   Game();
 
   bool init(const char *title, int WINDOW_W, int WINDOW_H);
@@ -23,10 +22,12 @@ public:
   bool running() { return isRunning; }
   void clear();
 
-  // imgui
+  void recreateBuffers();
 
   void ImguiInit();
   void ImguiRender();
+
+  std::vector<glm::vec3> colors;
 
 private:
   int WINDOW_W, WINDOW_H;
@@ -39,7 +40,8 @@ private:
   int frameCount;
   float fps;
 
-  Particle * p;
+  Particle *p;
+  int previousNumParticles;
 };
 
 #endif // !GAME_H
