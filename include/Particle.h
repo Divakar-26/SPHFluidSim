@@ -44,12 +44,12 @@ public:
     float blurry = 0.0f;
     int numParticles = 500;
     float particleSpacing = 0.0f;
-    float smoothingRadius = 0.0f;
+    float smoothingRadius = 0.17f;
     static float targetDensity;
     static float pressureMultiplier;
     float mass = 1.0f;
 
-    float GRAVITY = 0.0f;
+    float GRAVITY = 7.23f;
 
     std::vector<float> speed;
     std::vector<glm::vec2> predictedPosition;

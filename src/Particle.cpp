@@ -12,9 +12,9 @@ bool rightMouseDown = false;
 
 Particle::Particle(int W, int H) : WINDOW_W(W), WINDOW_H(H)
 {
-    radius = 0.01f;
+    radius = 0.038f;
     particleSpacing = 0.0f;
-    smoothingRadius = 0.5f;
+    smoothingRadius = 0.17f;
 
     float halfW = (W / 2.0f) / 100.0f;
     float halfH = (H / 2.0f) / 100.0f;
@@ -148,7 +148,7 @@ void Particle::OnEvent(SDL_Event &e)
         else if (e.button.button == SDL_BUTTON_RIGHT)
         {
             rightMouseDown = true;
-            applyMousePressure(mouseWorldPos, -10.0f, 1.0f);
+            applyMousePressure(mouseWorldPos, -1.0f, 4.0f);
         }
         else if (e.button.button == SDL_BUTTON_MIDDLE)
         {
@@ -175,7 +175,7 @@ void Particle::OnEvent(SDL_Event &e)
         }
         else if (e.motion.state & SDL_BUTTON_RMASK)
         {
-            applyMousePressure(mouseWorldPos, -1.0f, 0.8f);
+            applyMousePressure(mouseWorldPos, -0.3f, 4.0f);
         }
     }
 }
