@@ -77,3 +77,30 @@ Gradient of the kernel:
 ![Kernel Gradient](images/kernelG.png)
 
 This ensures smooth forces and prevents particle clustering.
+
+## User Controls
+
+- **Mouse Left Drag**: apply positive pressure/force to push particles.  
+- **Mouse Right Drag**: apply negative pressure/force to pull particles.  
+- **Middle Click**: prints density and pressure of clicked location. 
+
+## Dependencies
+
+- **C++17** or higher  
+- **SDL3**  
+- **OpenGL 3.3+**  
+- **GLAD**  
+- **GLM**  
+- **ImGui**  
+
+## Running the Simulation
+
+1. Clone the repository.
+2. Build using your favorite C++ compiler with SDL3, OpenGL, GLAD, and GLM linked.
+3. Run the executable to see a real-time particle simulation.
+
+
+## Notes
+
+- The simulation uses **spatial hashing** for efficient neighbor search, reducing the time complexity from O(n²) to near O(n).  
+- Color of particles is mapped based on **speed**, transitioning from blue → cyan → green → orange.  
