@@ -37,6 +37,9 @@ Particle::Particle(int W, int H) : WINDOW_W(W), WINDOW_H(H)
     updateDensities(position);
     speed.resize(numParticles, 0.0f);
     cellSize = smoothingRadius;
+
+    coefKernel = 4.0f / (M_PI * pow(smoothingRadius, 8));
+    coefGradient = -30.0f / (M_PI * pow(smoothingRadius, 5));
 }
 
 Particle::~Particle()
@@ -245,28 +248,27 @@ void Particle::MakeGrid()
 // }
 
 // Poly6 kernel for 2D
-    float Particle::smoothingKernel(float sr, float r)
-    {
-        if (r >= sr)
-            return 0.0f;
-        float coef = 4.0f / (M_PI * pow(sr, 8));
-        float diff = (sr * sr - r * r);
-        return coef * diff * diff * diff; 
-    }
+float Particle::smoothingKernel(float sr, float r)
+{
+    if (r >= sr)
+        return 0.0f;
 
-    glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
-    {
-        float r = glm::length(vec);
-        if (r <= 0.0f || r >= sr)
-            return glm::vec2(0.0f);
-        float coef = -30.0f / (M_PI * pow(sr, 5));
-        float factor = (sr - r) * (sr - r);
-        return coef * factor * (vec / r);
-    }
+    float diff = (sr * sr - r * r);
+    return coefKernel * diff * diff * diff;
+}
+
+glm::vec2 Particle::smoothingKernelGradient(float sr, glm::vec2 vec)
+{
+    float r = glm::length(vec);
+    if (r <= 0.0f || r >= sr)
+        return glm::vec2(0.0f);
+
+    float factor = (sr - r) * (sr - r);
+    return coefGradient * factor * (vec / r);
+}
 
 float Particle::calculateDensity(glm::vec2 samplePoint)
 {
-    float mass = 1.0f;
     float density = 0.0f;
     float sr = std::max(0.1f, smoothingRadius);
 
@@ -288,7 +290,6 @@ float Particle::calculateDensity(glm::vec2 samplePoint)
 
 float Particle::calculateProperty(glm::vec2 point)
 {
-    float mass = 1.0f;
     float property = 0.0f;
 
     for (int i = 0; i < numParticles; i++)
@@ -309,7 +310,6 @@ float Particle::calculateProperty(glm::vec2 point)
 glm::vec2 Particle::calculatePressureForce(int particleIndex)
 {
     glm::vec2 pressureForce(0.0f);
-    float mass = 1.0f;
     glm::vec2 samplePoint = predictedPosition[particleIndex];
 
     std::vector<int> neighbors = getNeighbors(samplePoint);
@@ -378,6 +378,7 @@ void Particle::buildSpatialGrid(std::vector<glm::vec2> predictedPos)
     }
 }
 
+
 std::vector<int> Particle::getNeighbors(glm::vec2 samplePoint)
 {
     std::vector<int> neighbors;
@@ -413,6 +414,7 @@ std::vector<int> Particle::getNeighbors(glm::vec2 samplePoint)
     return neighbors;
 }
 
+
 void Particle::applyMousePressure(glm::vec2 mousePos, float pressureStrength, float radius)
 {
     for (int i = 0; i < numParticles; i++)
@@ -438,4 +440,10 @@ void Particle::applyMousePressure(glm::vec2 mousePos, float pressureStrength, fl
             }
         }
     }
+}
+
+void Particle::recalculateSRConstant()
+{
+    coefKernel = 4.0f / (M_PI * pow(smoothingRadius, 8));
+    coefGradient = -30.0f / (M_PI * pow(smoothingRadius, 5));
 }

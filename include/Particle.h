@@ -28,6 +28,8 @@ public:
     float convertDensityToPressure(float density);
 
     void updateDensities(std::vector<glm::vec2> predictedPosition);
+    void recalculateSRConstant();
+
 
     std::vector<float> pressures;
 
@@ -45,6 +47,7 @@ public:
     float smoothingRadius = 0.0f;
     static float targetDensity;
     static float pressureMultiplier;
+    float mass = 1.0f;
 
     float GRAVITY = 0.0f;
 
@@ -68,4 +71,7 @@ private:
 
     int getCellHash(glm::vec2 position);
     int getCellHash(int x, int y);
+
+    float coefKernel;
+    float coefGradient;
 };

@@ -124,17 +124,22 @@ void Game::update(float dt)
   for (int i = 0; i < numOfParticels; i++)
   {
     float t = glm::clamp(p->speed[i] / maxSpeed, 0.0f, 1.0f);
-    
+
     // blue to green
-    if (t < 0.33f) {
+    if (t < 0.33f)
+    {
       // blue to cyan
       float localT = t * 3.0f;
       colors[i] = glm::vec3(0.0f, localT, 1.0f);
-    } else if (t < 0.66f) {
+    }
+    else if (t < 0.66f)
+    {
       // cyan to green
       float localT = (t - 0.33f) * 3.0f;
       colors[i] = glm::vec3(0.0f, 1.0f, 1.0f - localT);
-    } else {
+    }
+    else
+    {
       // green to orange
       float localT = (t - 0.66f) * 3.0f;
       colors[i] = glm::vec3(localT, 1.0f - localT * 0.5f, 0.0f);
@@ -264,6 +269,8 @@ void Game::ImguiRender()
   // ImGui::SliderFloat("Damping", &p->damping, 0.0f, 3.0f);
   if (ImGui::SliderFloat("Radius", &p->GetRadius(), 0.0f, 10.0f))
     ;
+  if (ImGui::SliderFloat("mass", &p->mass, 0.0f, 10.0f))
+    ;
   ImGui::SliderFloat("alpha", &p->alpha, 0.0f, 1.0f);
 
   if (ImGui::SliderInt("numParticles", &p->numParticles, 0, 3500) ||
@@ -273,7 +280,10 @@ void Game::ImguiRender()
     previousNumParticles = -1;
   }
 
-  ImGui::SliderFloat("smoothign Radius", &p->smoothingRadius, 0.0f, 10.0f);
+  if (ImGui::SliderFloat("smoothign Radius", &p->smoothingRadius, 0.0f, 10.0f))
+  {
+    p->recalculateSRConstant();
+  }
   ImGui::SliderFloat("target Density", &p->targetDensity, 0.0f, 20.0f);
   ImGui::SliderFloat("pressureMultiplier", &p->pressureMultiplier, 0.0f, 200.0f);
   ImGui::Checkbox("start", &p->running);
