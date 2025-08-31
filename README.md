@@ -10,12 +10,12 @@ SPH allows us to estimate any field quantity (e.g., temperature, velocity, or so
 
 ![Interpolation Equation](images/interpolation.png)
 
-- \( A(\mathbf{r}) \) → interpolated property at point \( \mathbf{r} \)  
-- \( A_j \) → property of particle \( j \)  
-- \( m_j \) → mass of particle \( j \)  
-- \( \rho_j \) → density of particle \( j \)  
-- \( W(|\mathbf{r} - \mathbf{r}_j|, h) \) → smoothing kernel (Poly6 in 2D)  
-- \( h \) → smoothing radius 
+- A(r) → interpolated property at point *r*
+- A(j) → property of particle j
+- m(j) → mass of particle j  
+- ρ(j) → density of particle j
+- W(|r - r(j)|, h) → smoothing kernel (Poly6 in 2D)  
+- h → smoothing radius 
 
 **Example from the simulation code:**
 
@@ -37,10 +37,10 @@ For each particle, density is calculated based on neighboring particles within t
 
 ![Density Calculation](images/Density.png)
 
-- \( \rho_i \) : density of particle \(i\)  
-- \( m_j \) : mass of neighboring particle \(j\) (here `1.0`)  
-- \( W \) : smoothing kernel function  
-- \( h \) : smoothing radius (`smoothingRadius`)  
+- ρ(i) : density of particle i
+- m(j) : mass of neighboring particle j (here `1.0`)  
+- *W* : smoothing kernel function  
+- h : smoothing radius (`smoothingRadius`)  
 
 
 ### 3. Pressure Calculation
@@ -49,9 +49,9 @@ Pressure is calculated from density deviation from a target density:
 
 ![Pressure](images/pressure.png)
 
-- \( P_i \) : pressure of particle \(i\)  
-- \( k \) : pressure multiplier (`pressureMultiplier`)  
-- \( \rho_0 \) : target density (`targetDensity`) 
+- P(i) : pressure of particle i  
+- k : pressure multiplier (`pressureMultiplier`)  
+- ρ(o) : target density (`targetDensity`) 
 
 ### 4. Pressure Force
 
@@ -59,7 +59,7 @@ The pressure force applied to each particle is:
 
 ![Pressure Force](images/pForce.png)
 
-- \( \nabla W \) : gradient of the smoothing kernel.
+- ∇W : gradient of the smoothing kernel.
 
 ### 5. Smoothing Kernel (Poly6 Kernel in 2D)
 
@@ -69,8 +69,8 @@ We use the **Poly6 kernel** for 2D:
 
 ![Kernel](images/kernel.png)
 
-- \( r = |\mathbf{r}_i - \mathbf{r}_j| \)  
-- \( h \) : smoothing radius  
+- r = |r(i) - r(j)|  
+- h: smoothing radius  
 
 Gradient of the kernel:
 
