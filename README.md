@@ -35,9 +35,7 @@ for (int i = 0; i < numParticles; i++) {
 
 For each particle, density is calculated based on neighboring particles within the smoothing radius `sr`:
 
-\[
-\rho_i = \sum_j m_j W(|\mathbf{r}_i - \mathbf{r}_j|, h)
-\]
+![Density Calculation](images/Density.png)
 
 - \( \rho_i \) : density of particle \(i\)  
 - \( m_j \) : mass of neighboring particle \(j\) (here `1.0`)  
@@ -49,9 +47,7 @@ For each particle, density is calculated based on neighboring particles within t
 
 Pressure is calculated from density deviation from a target density:
 
-\[
-P_i = k (\rho_i - \rho_0)
-\]
+![Pressure](images/pressure.png)
 
 - \( P_i \) : pressure of particle \(i\)  
 - \( k \) : pressure multiplier (`pressureMultiplier`)  
@@ -61,9 +57,7 @@ P_i = k (\rho_i - \rho_0)
 
 The pressure force applied to each particle is:
 
-\[
-\mathbf{F}_i^\text{pressure} = -\sum_j m_i m_j \frac{P_i + P_j}{2} \left(\frac{1}{\rho_i} + \frac{1}{\rho_j}\right) \nabla W(\mathbf{r}_i - \mathbf{r}_j, h)
-\]
+![Pressure Force](images/pForce.png)
 
 - \( \nabla W \) : gradient of the smoothing kernel.
 
@@ -73,17 +67,13 @@ The smoothing kernel describes how much a particle influences its neighbors base
 
 We use the **Poly6 kernel** for 2D:
 
-\[
-W(r, h) = \frac{4}{\pi h^8} (h^2 - r^2)^3, \quad 0 \le r \le h
-\]
+![Kernel](images/kernel.png)
 
 - \( r = |\mathbf{r}_i - \mathbf{r}_j| \)  
 - \( h \) : smoothing radius  
 
 Gradient of the kernel:
 
-\[
-\nabla W(r, h) = -\frac{30}{\pi h^5} (h - r)^2 \frac{\mathbf{r}}{r}, \quad 0 < r \le h
-\]
+![Kernel Gradient](images/kernelG.png)
 
 This ensures smooth forces and prevents particle clustering.
