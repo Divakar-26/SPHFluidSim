@@ -2,6 +2,8 @@
 
 This project is a **2D particle-based fluid simulation** implemented in C++ using **SDL3** and **OpenGL**. The simulation demonstrates the dynamics of particles interacting under pressure, gravity, and user-applied forces. It also includes a GUI via **ImGui** for live tweaking of parameters.
 
+![Image](images/image1.png)
+
 ## Formula Used
 
 ### 1. SPH Interpolation
@@ -95,12 +97,21 @@ This ensures smooth forces and prevents particle clustering.
 
 ## Running the Simulation
 
-1. Clone the repository.
-2. Build using your favorite C++ compiler with SDL3, OpenGL, GLAD, and GLM linked.
+1. Clone the repository (with submodules):
+   ```sh
+   git clone --recursive https://github.com/your-username/fluidSim.git
+   cd fluidSim
+2. To build the executable 
+    ```sh
+    make
 3. Run the executable to see a real-time particle simulation.
-
-
+    ```sh
+    ./main
 ## Notes
 
 - The simulation uses **spatial hashing** for efficient neighbor search, reducing the time complexity from O(n²) to near O(n).  
 - Color of particles is mapped based on **speed**, transitioning from blue → cyan → green → orange.  
+
+## Screenshots
+
+![Simulation](images/output.gif)

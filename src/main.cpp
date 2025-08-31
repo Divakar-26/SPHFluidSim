@@ -4,7 +4,7 @@ Game game;
 
 int main(int argc, char *argv[])
 {
-  game.init("hello", 1280, 720);
+  game.init("Fluid Simulator", 1280, 720);
   Uint64 frameTimePrev = SDL_GetTicks();
   while (game.running())
   {
